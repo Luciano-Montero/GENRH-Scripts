@@ -4,6 +4,8 @@
 // @version      1.2
 // @description  Resalta una palabra específica y agrega un texto 
 // @match        https://genrrhh-gtf.nomadesoft.com.ar/GENRRHHDOCENTES/servlet/com.rh.lqnovedadesleg*
+// @updateURL    https://github.com/LotosRIP/GENRH-Scripts/raw/refs/heads/main/Resaltar-Importe.user.js
+// @downloadURL  https://github.com/LotosRIP/GENRH-Scripts/raw/refs/heads/main/Resaltar-Importe.user.js
 // @grant        none
 // @run-at       document-idle
 // ==/UserScript==
