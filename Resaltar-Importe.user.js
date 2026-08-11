@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Resaltar IMPORTE
 // @namespace    Luciano Montero
-// @version      1.2
+// @version      1.3
 // @description  Resalta una palabra específica y agrega un texto 
 // @match        https://genrrhh-gtf.nomadesoft.com.ar/GENRRHHDOCENTES/servlet/com.rh.lqnovedadesleg*
 // @updateURL    https://github.com/Luciano-Montero/GENRH-Scripts/raw/refs/heads/main/Resaltar-Importe.user.js
