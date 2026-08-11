@@ -1,5 +1,5 @@
 // ==UserScript==
-// @name         Resaltar palabra + etiqueta
+// @name         Resaltar IMPORTE
 // @namespace    Luciano Montero
 // @version      1.2
 // @description  Resalta una palabra específica y agrega un texto 
