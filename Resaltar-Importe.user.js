@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Resaltar IMPORTE
 // @namespace    Luciano Montero
-// @version      1.3
-// @description  Resalta una palabra específica y agrega un texto 
+// @version      2.0
+// @description  Resalta Importe y envia cartel de advertencia
 // @match        https://genrrhh-gtf.nomadesoft.com.ar/GENRRHHDOCENTES/servlet/com.rh.lqnovedadesleg*
 // @updateURL    https://github.com/Luciano-Montero/GENRH-Scripts/raw/refs/heads/main/Resaltar-Importe.user.js
 // @downloadURL  https://github.com/Luciano-Montero/GENRH-Scripts/raw/refs/heads/main/Resaltar-Importe.user.js
@@ -13,95 +13,153 @@
 (function () {
     'use strict';
 
-    // Cadena de texto a buscar
     const palabra = "Importe/Valor";
-
-    // Texto que aparece
     const textoExtra = "⚠️ NO TOCAR";
 
-    // Color de fondo
+    // Color Resaltado
     const colorFondo = "yellow";
-
-    // Color del texto de la palabra resaltada
     const colorTexto = "black";
-
-    // Color del texto extra (la etiqueta "no tocar")
     const colorTextoExtra = "red";
+    const separacionTexto = 15; // píxeles de separación del texto extra
 
+    // true = distingue mayúsculas/minúsculas
     const sensibleMayusculas = false;
 
-    // Texto a la derecha de palabra
-    const separacionTexto = 15;
+    // ID Campo Importe
+    const idCampo = "W0002LQNVIMPORTE";
+    const valorInicial = "0,00";
 
-    // Función principal: recorre el HTML buscando la palabra y la resalta
+    // Mensaje que se muestra al cambiar valor de Importe
+    const mensajeAviso = () =>
+        `⚠️ Este importe fue modificado durante esta sesión.<br>Recargue la página`;
+
+    // Color de fondo de Campo Importe
+    const colorFondoCampoModificado = "#F09595";
+
+    // Resaltar Importe/Valor
+
     function resaltarTexto(nodo) {
-        // Creamos la expresión de búsqueda (regex) según la palabra configurada
-        // "g" = busca todas las coincidencias, no solo la primera
-        // "i" = ignora mayúsculas/minúsculas (se agrega si sensibleMayusculas es false)
         const regex = new RegExp(`(${palabra})`, sensibleMayusculas ? "g" : "gi");
 
-        // Función interna que recorre todos los elementos del HTML de forma recursiva
         function recorrer(nodo) {
-
-            // Caso 1: el nodo es texto plano (por ejemplo, el contenido de un párrafo)
             if (nodo.nodeType === Node.TEXT_NODE) {
-
-                // Si el texto contiene la palabra que buscamos...
                 if (regex.test(nodo.textContent)) {
-
-                    // Creamos un contenedor nuevo (span) para reemplazar ese texto
                     const span = document.createElement("span");
-
-                    // Reemplazamos la palabra encontrada por:
-                    // 1) <mark> = la palabra resaltada con color de fondo
-                    // 2) <span> = el texto extra al lado, con la separación configurada
                     span.innerHTML = nodo.textContent.replace(
                         regex,
-                        `<mark style="background:${colorFondo}; color:${colorTexto};">$1</mark>` +
+                        `<mark class="script-resaltado" style="background:${colorFondo}; color:${colorTexto};">$1</mark>` +
                         `<span style="color:${colorTextoExtra}; font-weight:bold; margin-left:${separacionTexto}px;">${textoExtra}</span>`
                     );
-
-                    // Reemplazamos el texto original de la página por nuestro nuevo contenido
                     nodo.replaceWith(span);
                 }
-
-            // Caso 2: el nodo es un elemento HTML (div, p, span, etc.)
             } else if (
                 nodo.nodeType === Node.ELEMENT_NODE &&
-                // Evitamos entrar en scripts, estilos, campos de texto o nuestras propias etiquetas
                 !["SCRIPT", "STYLE", "TEXTAREA", "MARK"].includes(nodo.tagName)
             ) {
-                // Convertimos los hijos a un array (por seguridad, ya que vamos a modificarlos)
-                // y llamamos a la función de nuevo para cada uno (recursividad)
                 Array.from(nodo.childNodes).forEach(recorrer);
             }
         }
 
-        // Arrancamos el recorrido desde el nodo que nos pasaron
         recorrer(nodo);
     }
 
-    // Ejecutamos el resaltado una primera vez sobre toda la página al cargar
+
+    // Creacion de Banner persistente
+
+    function crearBanner() {
+        let banner = document.getElementById("script-banner-advertencia");
+        if (!banner) {
+            banner = document.createElement("div");
+            banner.id = "script-banner-advertencia";
+            banner.style.position = "fixed";
+            banner.style.top = "0";
+            banner.style.left = "0";
+            banner.style.right = "0";
+            banner.style.zIndex = "999999";
+            banner.style.background = "#B00020";
+            banner.style.color = "white";
+            banner.style.padding = "10px 16px";
+            banner.style.fontFamily = "Arial, sans-serif";
+            banner.style.fontSize = "14px";
+            banner.style.fontWeight = "bold";
+            banner.style.textAlign = "center";
+            banner.style.lineHeight = "1.4";
+            banner.style.boxShadow = "0 2px 6px rgba(0,0,0,0.3)";
+            banner.style.display = "none"; // oculto hasta que haya un cambio real
+            document.body.appendChild(banner);
+            // Empujamos el contenido de la página un poco hacia abajo cuando el banner está visible
+            document.body.style.transition = "padding-top 0.2s ease";
+        }
+        return banner;
+    }
+
+    // Muestra el banner
+    function mostrarBannerPersistente(texto) {
+        const banner = crearBanner();
+        banner.innerHTML = texto; // innerHTML (no textContent) para que el <br> funcione como salto de línea
+        if (banner.style.display === "none") {
+            banner.style.display = "block";
+            document.body.style.paddingTop = banner.offsetHeight + "px";
+        }
+    }
+
+    // Deja el campo Importe marcado con fondo rojo de forma fija
+    function marcarCampoModificado(campo) {
+        campo.style.backgroundColor = colorFondoCampoModificado;
+    }
+
+
+    // Funcion para detectar cambio de importe
+
+    function vigilarCampo() {
+        const campo = document.getElementById(idCampo);
+
+        // Si el campo todavía no cargó en la página, o ya lo estamos vigilando, no hacemos nada
+        if (!campo || campo.dataset.vigilado === "true") return;
+        campo.dataset.vigilado = "true";
+
+        // Guardamos si ya se disparó la advertencia en esta sesión de la página.
+        // Una vez en true, queda en true pase lo que pase (hasta recargar la página).
+        let yaSeModifico = false;
+
+        function chequearCambio() {
+            const valorActual = campo.value;
+
+            // Si el campo ya no tiene el valor original, marcamos que hubo un cambio
+            if (valorActual !== valorInicial) {
+                yaSeModifico = true;
+            }
+
+            // Si en algún momento de esta sesión hubo un cambio (aunque ahora esté
+            // de nuevo en el valor original), la advertencia se mantiene fija.
+            if (yaSeModifico) {
+                mostrarBannerPersistente(mensajeAviso());
+                marcarCampoModificado(campo); // se re-aplica en cada evento del usuario, por si el campo cambia varias veces
+            }
+        }
+
+        // Solo se dispara por usuario
+        campo.addEventListener("input", chequearCambio);
+        campo.addEventListener("change", chequearCambio);
+    }
+
+
+    // Ejecuccion
     resaltarTexto(document.body);
+    vigilarCampo();
 
-    // ============================
-    // DETECCIÓN DE CONTENIDO NUEVO (páginas dinámicas, AJAX, scroll infinito, etc.)
-    // ============================
-
-    // Un "observer" vigila la página por si se agrega contenido nuevo después de cargar
-    // (por ejemplo, si el sitio carga más info al hacer scroll, sin recargar la página)
-    const observer = new MutationObserver((mutaciones) => {
+    // Por si la página carga contenido nuevo dinámicamente (AJAX, scroll, etc.)
+    const observerPagina = new MutationObserver((mutaciones) => {
         mutaciones.forEach((m) => {
             m.addedNodes.forEach((n) => {
-                // Si se agregó un elemento o texto nuevo, lo procesamos también
                 if (n.nodeType === Node.ELEMENT_NODE || n.nodeType === Node.TEXT_NODE) {
                     resaltarTexto(n);
                 }
             });
         });
+        vigilarCampo();
     });
 
-    // Le decimos al observer que vigile todo el <body> y todos sus hijos/descendientes
-    observer.observe(document.body, { childList: true, subtree: true });
+    observerPagina.observe(document.body, { childList: true, subtree: true });
 
 })();
